@@ -124,6 +124,32 @@ nav .nav-links a{font-size:12px;padding:5px 10px}
 .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px}
 .po-progress{grid-template-columns:repeat(2,1fr)}
 }
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-bar .flabel{font-size:11px;color:var(--text2);font-weight:600;margin-right:2px}
+.fbtn{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg2);font-family:'DM Sans',sans-serif;transition:all .1s}
+.fbtn.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.fbtn:hover{border-color:var(--primary)}
+.print-btn{padding:6px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--primary);background:var(--bg2);color:var(--primary);font-family:'DM Sans',sans-serif}
+.print-btn:hover{background:var(--primary-l)}
+@media print{
+body{background:#fff!important;padding:0!important}
+nav,.back-btn,.stats-grid,.filter-bar,.print-btn,.check-btn,.check-group input,.del-btn,.add-pallet-btn,.qty-input,.pallet-input,button,.po-meta-edit{display:none!important}
+.container{padding:0!important;max-width:100%!important}
+.po-detail-header{margin-bottom:10px!important}
+.po-detail-header h1{font-size:18px!important}
+.po-meta .tag{font-size:11px!important;padding:2px 8px!important}
+.section-title{font-size:13px!important;margin:10px 0 6px!important}
+.table-wrap{border:1px solid #999!important;overflow:visible!important}
+table{min-width:0!important}
+th{font-size:9px!important;padding:4px!important}
+td{font-size:10px!important;padding:3px 4px!important}
+td img.tile-img{width:50px!important;height:25px!important}
+.status-badge{font-size:9px!important;padding:1px 6px!important}
+.check-group{display:none!important}
+td[data-print-match],td[data-print-qc]{display:table-cell!important}
+.no-print{display:none!important}
+.print-match-val,.print-qc-val{display:inline!important;font-size:10px}
+}
 </style>
 </head>
 <body>
@@ -230,11 +256,12 @@ main.innerHTML=`
 <h1 class="page-title">Dashboard</h1>
 <p class="page-sub">Overview of all factories and purchase orders</p>
 <div class="stats-grid">
-<div class="stat-card"><div class="label">Total POs</div><div class="value blue">${totalPOs}</div></div>
-<div class="stat-card"><div class="label">Active</div><div class="value amber">${totalActive}</div></div>
-<div class="stat-card"><div class="label">Completed</div><div class="value green">${totalComplete}</div></div>
+<div class="stat-card" style="cursor:pointer" onclick="showPOList('all')"><div class="label">Total POs</div><div class="value blue">${totalPOs}</div></div>
+<div class="stat-card" style="cursor:pointer" onclick="showPOList('active')"><div class="label">Active</div><div class="value amber">${totalActive}</div></div>
+<div class="stat-card" style="cursor:pointer" onclick="showPOList('completed')"><div class="label">Completed</div><div class="value green">${totalComplete}</div></div>
 <div class="stat-card"><div class="label">Factories</div><div class="value">${fNames.length}</div></div>
 </div>
+<div id="dash-po-list"></div>
 ${fNames.length?`<div class="section-title">Factories</div>
 <div class="factory-grid">${fNames.map(f=>{
 const fac=factories[f];
@@ -245,6 +272,29 @@ return`<div class="factory-card" onclick="go('factory','${encodeURIComponent(f)}
 <div class="progress-row">Avg progress<div class="progress-bar"><div class="progress-fill pf-blue" style="width:${Math.round(avgProgress)}%"></div></div>${Math.round(avgProgress)}%</div>
 </div>`}).join('')}</div>`
 :`<div class="empty-state"><h3>No POs uploaded yet</h3><p>Upload your first Purchase Order to get started</p><br><button class="btn-upload" onclick="go('upload')">+ Upload PO</button></div>`}`;
+}
+
+function showPOList(filter){
+let pos=allPOs;
+let title='All POs';
+if(filter==='active'){pos=allPOs.filter(p=>!isComplete(p));title='Active POs'}
+if(filter==='completed'){pos=allPOs.filter(p=>isComplete(p));title='Completed POs'}
+const el=document.getElementById('dash-po-list');
+if(!el)return;
+el.innerHTML=`<div class="section-title">${title} (${pos.length})</div>
+<div class="po-list">${pos.length?pos.map(po=>{
+const pr=getProgress(po);const comp=isComplete(po);const days=daysAgo(po.date);
+return`<div class="po-card" onclick="go('po','${po.id}')">
+<div class="po-header">
+<h3>${po.poNumber}${po.nickname?` <span style="font-weight:400;color:var(--text2);font-size:13px">· ${po.nickname}</span>`:''} <span class="status-badge ${comp?'sb-complete':'sb-active'}">${comp?'Completed':'Active'}</span></h3>
+<div class="meta"><span>${po.factory||'N/A'}</span><span>${po.date||'N/A'}</span><span>${po.products.length} designs</span>${days?`<span>${days} days ago</span>`:''}</div>
+</div>
+<div class="po-progress">
+<div class="pp-item"><div class="pp-val">${pr.matchingN}</div>Matching</div>
+<div class="pp-item"><div class="pp-val">${pr.qcN}</div>QC</div>
+<div class="pp-item"><div class="pp-val">${pr.qtyN}</div>Production</div>
+<div class="pp-item"><div class="pp-val">${pr.palletN}</div>Pallet</div>
+</div></div>`}).join(''):'<div class="empty-state"><p>No POs found</p></div>'}</div>`;
 }
 
 function renderFactory(name,filter){
@@ -627,13 +677,26 @@ images[pIdx]=finalCanvas.toDataURL('image/jpeg',0.5);
 return images;
 }
 
+window._poFilters={surface:'ALL',matching:false,qc:false,prodBox:false,pallet:false};
+function setFilter(key,val){window._poFilters[key]=val;renderPO(window._param)}
+
 function renderPO(id){
 const po=allPOs.find(p=>p.id===id);
 if(!po){main.innerHTML='<div class="empty-state"><h3>PO not found</h3></div>';return}
 const pr=getProgress(po);const comp=isComplete(po);
+const F=window._poFilters;
+const allFinish=new Set();po.products.forEach(p=>{if(p.finishing)allFinish.add(p.finishing.toUpperCase())});
+const finishList=['ALL',...[...allFinish].sort()];
+let filtered=po.products;
+if(F.surface!=='ALL')filtered=filtered.filter(p=>p.finishing&&p.finishing.toUpperCase()===F.surface);
+if(F.matching)filtered=filtered.filter(p=>!p.matching||!p.matching.done);
+if(F.qc)filtered=filtered.filter(p=>!p.qc||!p.qc.done);
+if(F.prodBox)filtered=filtered.filter(p=>!p.productionBoxes);
+if(F.pallet)filtered=filtered.filter(p=>!p.palletPacking||p.palletPacking.length===0);
 let tableRows='';
 let totalPOBoxes=0,totalProdBoxes=0,totalPalletPacked=0;
-po.products.forEach((p,pi)=>{
+filtered.forEach((p)=>{
+const pi=po.products.indexOf(p);
 const matchChecked=p.matching&&p.matching.done;
 const qcChecked=p.qc&&p.qc.done;
 const ppRows=p.palletPacking||[];
@@ -646,40 +709,39 @@ const diffColor=diff===0?'var(--text2)':diff>0?'var(--green)':'var(--red)';
 const diffStr=diff===0?'—':diff>0?'+'+diff:String(diff);
 let palletHTML='';
 if(ppRows.length===0){
-palletHTML=`<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add pallet</button>`;
+palletHTML=`<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add</button>`;
 }else{
 palletHTML=`<table style="width:100%;border-collapse:collapse;min-width:0">`;
 ppRows.forEach((pp,ri)=>{
 const packed=Math.round((parseFloat(pp.boxPerPallet)||0)*pp.count);
-palletHTML+=`<tr><td style="padding:2px 4px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.boxPerPallet}" onchange="updPallet('${id}',${pi},${ri},'bpp',this.value)"></td>
-<td style="padding:2px 4px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.count}" onchange="updPallet('${id}',${pi},${ri},'cnt',this.value)"></td>
-<td style="padding:2px 4px;border:none;text-align:center;font-size:11px;white-space:nowrap">${packed} <button class="del-btn" onclick="delPallet('${id}',${pi},${ri})">✕</button></td></tr>`;
+palletHTML+=`<tr><td style="padding:2px 3px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.boxPerPallet}" onchange="updPallet('${id}',${pi},${ri},'bpp',this.value)"></td>
+<td style="padding:2px 3px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.count}" onchange="updPallet('${id}',${pi},${ri},'cnt',this.value)"></td>
+<td style="padding:2px 3px;border:none;text-align:center;font-size:11px;white-space:nowrap">${packed} <button class="del-btn" onclick="delPallet('${id}',${pi},${ri})">✕</button></td></tr>`;
 });
-palletHTML+=`</table>
-<div style="text-align:center;margin-top:4px">
+palletHTML+=`</table><div style="text-align:center;margin-top:3px">
 <button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+</button>
-${totalPacked>0?`<span style="margin-left:6px;font-size:11px;color:var(--green);font-weight:600">${Math.round(totalPacked)} packed</span>`:''}
+${totalPacked>0?`<span style="margin-left:4px;font-size:10px;color:var(--green);font-weight:600">${Math.round(totalPacked)}</span>`:''}
 </div>`;
 }
+const matchText=matchChecked?(p.matching.date||'Done'):'Pending';
+const qcText=qcChecked?(p.qc.date||'Done'):'Pending';
 tableRows+=`<tr>
-<td><div style="display:flex;align-items:center;gap:3px">${p.sno}<button class="del-btn" style="font-size:10px;opacity:0.3" onclick="event.stopPropagation();deleteDesign('${id}',${pi})" title="Delete design">✕</button></div></td>
+<td><div style="display:flex;align-items:center;gap:3px">${p.sno}<button class="del-btn no-print" style="font-size:10px;opacity:0.3" onclick="event.stopPropagation();deleteDesign('${id}',${pi})" title="Delete">✕</button></div></td>
 <td style="font-weight:600;font-size:11px">${p.code}</td>
 <td style="font-size:10px">${p.sticker||''}</td>
 <td style="font-size:11px">${p.faces}</td>
 <td><span class="status-badge ${p.finishing==='GLOSSY'?'sb-warning':p.finishing==='MATT'?'sb-active':'sb-complete'}">${p.finishing}</span></td>
 <td>${p.image?`<img src="${p.image}" class="tile-img">`:'—'}</td>
-<td>
-<div class="check-group">
+<td><div class="check-group">
 <button class="check-btn ${matchChecked?'done':''}" onclick="toggleMatching('${id}',${pi})">${matchChecked?'✓':''}</button>
 <input type="date" class="date-input" value="${p.matching&&p.matching.date||''}" onchange="setMatchDate('${id}',${pi},this.value)" ${matchChecked?'':'style="opacity:0.4"'}>
-</div></td>
-<td>
-<div class="check-group">
+</div><span class="print-match-val" style="display:none">${matchText}</span></td>
+<td><div class="check-group">
 <button class="check-btn ${qcChecked?'done':''}" onclick="toggleQC('${id}',${pi})">${qcChecked?'✓':''}</button>
 <input type="date" class="date-input" value="${p.qc&&p.qc.date||''}" onchange="setQCDate('${id}',${pi},this.value)" ${qcChecked?'':'style="opacity:0.4"'}>
-</div></td>
+</div><span class="print-qc-val" style="display:none">${qcText}</span></td>
 <td class="ctr" style="font-weight:600">${poBox||'—'}</td>
-<td><input type="number" class="qty-input" value="${prodBox||''}" placeholder="0" onchange="setProdBoxes('${id}',${pi},this.value)"></td>
+<td><input type="number" class="qty-input" value="${prodBox||''}" placeholder="0" onchange="setProdBoxes('${id}',${pi},this.value)"><span class="print-match-val" style="display:none">${prodBox||'—'}</span></td>
 <td class="ctr" style="font-weight:600;color:${diffColor}">${prodBox?diffStr:'—'}</td>
 <td colspan="3" style="padding:4px">${palletHTML}</td>
 </tr>`});
@@ -687,27 +749,28 @@ const totalDiff=totalProdBoxes-totalPOBoxes;
 const totalDiffColor=totalDiff===0?'var(--text2)':totalDiff>0?'var(--green)':'var(--red)';
 const totalDiffStr=totalProdBoxes?((totalDiff===0?'—':totalDiff>0?'+'+totalDiff:String(totalDiff))):'—';
 tableRows+=`<tr class="total-row">
-<td colspan="8" style="text-align:right;font-weight:700;color:var(--text)">TOTAL</td>
+<td colspan="8" style="text-align:right;font-weight:700;color:var(--text)">TOTAL (${filtered.length}/${po.products.length})</td>
 <td class="ctr" style="font-weight:700">${totalPOBoxes}</td>
 <td class="ctr" style="font-weight:700">${totalProdBoxes||'—'}</td>
 <td class="ctr" style="font-weight:700;color:${totalDiffColor}">${totalDiffStr}</td>
 <td colspan="3" class="ctr" style="font-weight:700">${totalPalletPacked?Math.round(totalPalletPacked)+' packed':''}</td>
 </tr>`;
+const anyFilter=F.surface!=='ALL'||F.matching||F.qc||F.prodBox||F.pallet;
 
 main.innerHTML=`
 <button class="back-btn" onclick="go('${po.factory?'factory':'dashboard'}','${encodeURIComponent(po.factory||'')}')">← Back</button>
 <div class="po-detail-header">
 <h1>PO: ${po.poNumber} <span class="status-badge ${comp?'sb-complete':'sb-active'}">${comp?'Ready for Loading':'Active'}</span></h1>
-${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${po.nickname} <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">edit</button></div>`:`<button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">+ Add nickname</button>`}
+${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${po.nickname} <button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">edit</button></div>`:`<button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">+ Add nickname</button>`}
 <div class="po-meta">
-<span class="tag">Factory: <b>${po.factory||'N/A'}</b> <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif" onclick="editFactory('${id}')">edit</button></span>
+<span class="tag">Factory: <b>${po.factory||'N/A'}</b> <button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif" onclick="editFactory('${id}')">edit</button></span>
 <span class="tag">Date: <b>${po.date||'N/A'}</b></span>
 <span class="tag">Size: <b>${po.size||'N/A'}</b></span>
 <span class="tag">Containers: <b>${po.totalContainers||0}</b></span>
 <span class="tag">Total Boxes: <b>${po.totalBoxes||0}</b></span>
 </div>
 </div>
-<div class="stats-grid" style="margin-bottom:20px">
+<div class="stats-grid no-print" style="margin-bottom:20px">
 <div class="stat-card"><div class="label">Design Matching</div><div class="value ${pr.matching===100?'green':'blue'}">${pr.matchingN}</div>
 <div class="progress-row"><div class="progress-bar"><div class="progress-fill ${pr.matching===100?'pf-green':'pf-blue'}" style="width:${pr.matching}%"></div></div>${pr.matching}%</div></div>
 <div class="stat-card"><div class="label">QC</div><div class="value ${pr.qc===100?'green':'blue'}">${pr.qcN}</div>
@@ -717,7 +780,21 @@ ${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${
 <div class="stat-card"><div class="label">Pallet Packing</div><div class="value ${pr.pallet===100?'green':'blue'}">${pr.palletN}</div>
 <div class="progress-row"><div class="progress-bar"><div class="progress-fill ${pr.pallet===100?'pf-green':'pf-blue'}" style="width:${pr.pallet}%"></div></div>${pr.pallet}%</div></div>
 </div>
-<div class="section-title">Product tracking</div>
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<div class="section-title" style="margin:0">Product tracking</div>
+<button class="print-btn" onclick="window.print()">Print</button>
+</div>
+<div class="filter-bar no-print">
+<span class="flabel">Surface:</span>
+${finishList.map(f=>`<button class="fbtn ${F.surface===f?'on':''}" onclick="setFilter('surface','${f}')">${f}</button>`).join('')}
+<span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span>
+<span class="flabel">Pending:</span>
+<button class="fbtn ${F.matching?'on':''}" onclick="setFilter('matching',${!F.matching})">Matching</button>
+<button class="fbtn ${F.qc?'on':''}" onclick="setFilter('qc',${!F.qc})">QC</button>
+<button class="fbtn ${F.prodBox?'on':''}" onclick="setFilter('prodBox',${!F.prodBox})">Prod. boxes</button>
+<button class="fbtn ${F.pallet?'on':''}" onclick="setFilter('pallet',${!F.pallet})">Pallet</button>
+${anyFilter?`<span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span><button class="fbtn" style="color:var(--red);border-color:var(--red)" onclick="window._poFilters={surface:'ALL',matching:false,qc:false,prodBox:false,pallet:false};renderPO('${id}')">Clear</button>`:''}
+</div>
 <div class="table-wrap">
 <table>
 <thead><tr>
@@ -728,7 +805,7 @@ ${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${
 <tbody>${tableRows}</tbody>
 </table>
 </div>
-<div style="margin-top:16px;text-align:right">
+<div style="margin-top:16px;text-align:right" class="no-print">
 <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="deletePO('${id}')">Delete PO</button>
 </div>`;
 }
