@@ -175,6 +175,7 @@ for(const id of ids){
 const po=allPOs.find(p=>p.id===id);if(!po)continue;
 try{
 let poData={...po};
+delete poData.updated_at;
 const dataStr=JSON.stringify(poData);
 if(dataStr.length>800000){
 poData={...po,products:po.products.map(p=>({...p,image:null}))};
@@ -184,7 +185,7 @@ const{error}=await db.from('purchase_orders').upsert(row,{onConflict:'id'});
 if(error)throw error;
 }catch(e){console.error('Save failed for PO '+po.id,e)}
 }
-},500);
+},300);
 }
 async function saveData(){for(const po of allPOs)savePO(po.id)}
 
@@ -858,39 +859,54 @@ po.totalContainers=po.products.reduce((a,p)=>a+(p.containers||0),0);
 savePO(poId);renderPO(poId);
 }
 
+function refreshView(){
+const page=window._page||'dashboard';
+const param=window._param;
+if(page==='dashboard')renderDashboard();
+else if(page==='factory')renderFactory(param);
+else if(page==='timeline')renderTimeline();
+else if(page==='po')renderPO(param);
+}
+
+async function syncFromDB(){
+if(document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
+try{
+const{data,error}=await db.from('purchase_orders').select('id,updated_at').order('created_at',{ascending:false});
+if(error)return;
+const remoteMap={};
+(data||[]).forEach(r=>{remoteMap[r.id]=r.updated_at});
+const localMap={};
+allPOs.forEach(p=>{localMap[p.id]=p.updated_at||''});
+const remoteIds=Object.keys(remoteMap);
+const localIds=Object.keys(localMap);
+let changed=remoteIds.length!==localIds.length;
+if(!changed){for(const id of remoteIds){if(remoteMap[id]!==localMap[id]){changed=true;break}}}
+if(changed){await loadData();refreshView()}
+}catch(e){}
+}
+
 async function init(){
 main.innerHTML='<div class="loading">Loading POs...</div>';
 await loadData();
 go('dashboard');
 try{
-db.channel('po-changes')
-.on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},async(payload)=>{
-await loadData();
-const page=window._page||'dashboard';
-const param=window._param;
-if(page==='dashboard')renderDashboard();
-else if(page==='factory')renderFactory(param);
-else if(page==='timeline')renderTimeline();
-else if(page==='po')renderPO(param);
+db.channel('po-sync')
+.on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},async()=>{
+await loadData();refreshView();
 }).subscribe((status)=>{console.log('Realtime:',status)});
-}catch(e){console.warn('Realtime setup failed:',e)}
-setInterval(async()=>{
-if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'))return;
-const oldJSON=JSON.stringify(allPOs.map(p=>p.id+':'+(p.updated_at||'')));
-await loadData();
-const newJSON=JSON.stringify(allPOs.map(p=>p.id+':'+(p.updated_at||'')));
-if(oldJSON!==newJSON){
-const page=window._page||'dashboard';
-const param=window._param;
-if(page==='dashboard')renderDashboard();
-else if(page==='factory')renderFactory(param);
-else if(page==='timeline')renderTimeline();
-else if(page==='po')renderPO(param);
-}
-},10000);
+}catch(e){console.warn('Realtime failed:',e)}
+setInterval(syncFromDB,8000);
+document.addEventListener('visibilitychange',()=>{
+if(!document.hidden)syncFromDB();
+});
 }
 init();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+if('serviceWorker' in navigator){
+navigator.serviceWorker.getRegistrations().then(regs=>{
+regs.forEach(r=>r.update());
+});
+navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
