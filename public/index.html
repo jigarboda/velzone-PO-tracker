@@ -77,22 +77,22 @@ nav .nav-links a:hover,nav .nav-links a.active{color:#fff;background:rgba(255,25
 .upload-zone p{font-size:13px;color:var(--text2)}
 .upload-zone input{display:none}
 .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2)}
-table{width:100%;border-collapse:collapse;min-width:1200px}
+table{width:100%;border-collapse:collapse;min-width:960px}
 thead{background:var(--bg3)}
-th{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--border);white-space:nowrap}
-td{padding:8px 12px;font-size:13px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+th{padding:6px 6px;text-align:left;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:5px 6px;font-size:12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
 th.ctr,td.ctr{text-align:center}
-tr.sub-row td{background:#fafbfc;font-size:12px;border-bottom:1px solid #eef0f2}
-tr.total-row td{background:var(--green-l);font-weight:600;color:var(--green);border-top:2px solid #bbf7d0;font-size:13px}
-td img.tile-img{width:120px;height:60px;object-fit:contain;border-radius:4px;border:1px solid var(--border);display:block;background:var(--bg3)}
-.check-group{display:flex;align-items:center;gap:6px}
-.check-btn{width:28px;height:28px;border-radius:8px;border:2px solid var(--border);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+tr.sub-row td{background:#fafbfc;font-size:11px;border-bottom:1px solid #eef0f2}
+tr.total-row td{background:var(--green-l);font-weight:600;color:var(--green);border-top:2px solid #bbf7d0;font-size:12px}
+td img.tile-img{width:70px;height:35px;object-fit:contain;border-radius:3px;border:1px solid var(--border);display:block;background:var(--bg3)}
+.check-group{display:flex;align-items:center;gap:4px}
+.check-btn{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s}
 .check-btn.done{background:var(--green);border-color:var(--green);color:#fff}
-.date-input{width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif}
-.qty-input{width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:center}
+.date-input{width:88px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif}
+.qty-input{width:64px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:'JetBrains Mono',monospace;text-align:center}
 .add-pallet-btn{display:inline-flex;align-items:center;gap:4px;background:var(--primary-l);color:var(--primary);border:none;padding:4px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
 .add-pallet-btn:hover{background:#c7d2fe}
-.pallet-input{width:55px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;font-family:'JetBrains Mono',monospace}
+.pallet-input{width:45px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;text-align:center;font-family:'JetBrains Mono',monospace}
 .del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px}
 .po-detail-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px}
 .po-detail-header h1{font-size:22px;font-weight:700}
@@ -634,8 +634,6 @@ const pr=getProgress(po);const comp=isComplete(po);
 let tableRows='';
 let totalPOBoxes=0,totalProdBoxes=0,totalPalletPacked=0;
 po.products.forEach((p,pi)=>{
-const palletRows=Math.max(1,(p.palletPacking||[]).length);
-const totalSubRows=p.palletSpecs.length>1?p.palletSpecs.length:1;
 const matchChecked=p.matching&&p.matching.done;
 const qcChecked=p.qc&&p.qc.done;
 const ppRows=p.palletPacking||[];
@@ -646,57 +644,50 @@ const diff=prodBox-poBox;
 totalPOBoxes+=poBox;totalProdBoxes+=prodBox;totalPalletPacked+=totalPacked;
 const diffColor=diff===0?'var(--text2)':diff>0?'var(--green)':'var(--red)';
 const diffStr=diff===0?'—':diff>0?'+'+diff:String(diff);
+let palletHTML='';
+if(ppRows.length===0){
+palletHTML=`<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add pallet</button>`;
+}else{
+palletHTML=`<table style="width:100%;border-collapse:collapse;min-width:0">`;
+ppRows.forEach((pp,ri)=>{
+const packed=Math.round((parseFloat(pp.boxPerPallet)||0)*pp.count);
+palletHTML+=`<tr><td style="padding:2px 4px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.boxPerPallet}" onchange="updPallet('${id}',${pi},${ri},'bpp',this.value)"></td>
+<td style="padding:2px 4px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.count}" onchange="updPallet('${id}',${pi},${ri},'cnt',this.value)"></td>
+<td style="padding:2px 4px;border:none;text-align:center;font-size:11px;white-space:nowrap">${packed} <button class="del-btn" onclick="delPallet('${id}',${pi},${ri})">✕</button></td></tr>`;
+});
+palletHTML+=`</table>
+<div style="text-align:center;margin-top:4px">
+<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+</button>
+${totalPacked>0?`<span style="margin-left:6px;font-size:11px;color:var(--green);font-weight:600">${Math.round(totalPacked)} packed</span>`:''}
+</div>`;
+}
 tableRows+=`<tr>
-<td rowspan="${totalSubRows}"><div style="display:flex;align-items:center;gap:4px">${p.sno}<button class="del-btn" style="font-size:11px;opacity:0.4" onclick="event.stopPropagation();deleteDesign('${id}',${pi})" title="Delete design">✕</button></div></td>
-<td rowspan="${totalSubRows}" style="font-weight:600">${p.code}</td>
-<td rowspan="${totalSubRows}" style="font-size:12px">${p.sticker||''}</td>
-<td rowspan="${totalSubRows}">${p.faces}</td>
-<td rowspan="${totalSubRows}"><span class="status-badge ${p.finishing==='GLOSSY'?'sb-warning':p.finishing==='MATT'?'sb-active':'sb-complete'}">${p.finishing}</span></td>
-<td rowspan="${totalSubRows}">${p.image?`<img src="${p.image}" class="tile-img">`:'—'}</td>
-<td rowspan="${totalSubRows}">
+<td><div style="display:flex;align-items:center;gap:3px">${p.sno}<button class="del-btn" style="font-size:10px;opacity:0.3" onclick="event.stopPropagation();deleteDesign('${id}',${pi})" title="Delete design">✕</button></div></td>
+<td style="font-weight:600;font-size:11px">${p.code}</td>
+<td style="font-size:10px">${p.sticker||''}</td>
+<td style="font-size:11px">${p.faces}</td>
+<td><span class="status-badge ${p.finishing==='GLOSSY'?'sb-warning':p.finishing==='MATT'?'sb-active':'sb-complete'}">${p.finishing}</span></td>
+<td>${p.image?`<img src="${p.image}" class="tile-img">`:'—'}</td>
+<td>
 <div class="check-group">
 <button class="check-btn ${matchChecked?'done':''}" onclick="toggleMatching('${id}',${pi})">${matchChecked?'✓':''}</button>
 <input type="date" class="date-input" value="${p.matching&&p.matching.date||''}" onchange="setMatchDate('${id}',${pi},this.value)" ${matchChecked?'':'style="opacity:0.4"'}>
 </div></td>
-<td rowspan="${totalSubRows}">
+<td>
 <div class="check-group">
 <button class="check-btn ${qcChecked?'done':''}" onclick="toggleQC('${id}',${pi})">${qcChecked?'✓':''}</button>
 <input type="date" class="date-input" value="${p.qc&&p.qc.date||''}" onchange="setQCDate('${id}',${pi},this.value)" ${qcChecked?'':'style="opacity:0.4"'}>
 </div></td>
-<td rowspan="${totalSubRows}" class="ctr" style="font-weight:600">${poBox||'—'}</td>
-<td rowspan="${totalSubRows}">
-<input type="number" class="qty-input" value="${prodBox||''}" placeholder="0" onchange="setProdBoxes('${id}',${pi},this.value)">
-</td>
-<td rowspan="${totalSubRows}" class="ctr" style="font-weight:600;color:${diffColor}">${prodBox?diffStr:'—'}</td>`;
-if(ppRows.length===0){
-tableRows+=`<td colspan="3" style="text-align:center">
-<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add pallet</button></td></tr>`;
-}else{
-tableRows+=`<td class="ctr"><input class="pallet-input" value="${ppRows[0].boxPerPallet}" onchange="updPallet('${id}',${pi},0,'bpp',this.value)"></td>
-<td class="ctr"><input class="pallet-input" value="${ppRows[0].count}" onchange="updPallet('${id}',${pi},0,'cnt',this.value)"></td>
-<td class="ctr" style="white-space:nowrap">${Math.round((parseFloat(ppRows[0].boxPerPallet)||0)*ppRows[0].count)} <button class="del-btn" onclick="delPallet('${id}',${pi},0)">✕</button></td></tr>`;
-for(let ri=1;ri<ppRows.length;ri++){
-tableRows+=`<tr class="sub-row">
-<td class="ctr"><input class="pallet-input" value="${ppRows[ri].boxPerPallet}" onchange="updPallet('${id}',${pi},${ri},'bpp',this.value)"></td>
-<td class="ctr"><input class="pallet-input" value="${ppRows[ri].count}" onchange="updPallet('${id}',${pi},${ri},'cnt',this.value)"></td>
-<td class="ctr" style="white-space:nowrap">${Math.round((parseFloat(ppRows[ri].boxPerPallet)||0)*ppRows[ri].count)} <button class="del-btn" onclick="delPallet('${id}',${pi},${ri})">✕</button></td></tr>`;
-}
-tableRows+=`<tr class="sub-row"><td colspan="3" style="text-align:center">
-<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add pallet</button>
-${totalPacked>0?`<span style="margin-left:10px;font-size:12px;color:var(--green);font-weight:600">Total: ${Math.round(totalPacked)} boxes</span>`:''}</td></tr>`;
-}
-if(p.palletSpecs.length>1&&ppRows.length===0){
-for(let si=1;si<p.palletSpecs.length;si++){
-tableRows+=`<tr class="sub-row"><td colspan="3"></td></tr>`;
-}
-}
-});
+<td class="ctr" style="font-weight:600">${poBox||'—'}</td>
+<td><input type="number" class="qty-input" value="${prodBox||''}" placeholder="0" onchange="setProdBoxes('${id}',${pi},this.value)"></td>
+<td class="ctr" style="font-weight:600;color:${diffColor}">${prodBox?diffStr:'—'}</td>
+<td colspan="3" style="padding:4px">${palletHTML}</td>
+</tr>`});
 const totalDiff=totalProdBoxes-totalPOBoxes;
 const totalDiffColor=totalDiff===0?'var(--text2)':totalDiff>0?'var(--green)':'var(--red)';
 const totalDiffStr=totalProdBoxes?((totalDiff===0?'—':totalDiff>0?'+'+totalDiff:String(totalDiff))):'—';
 tableRows+=`<tr class="total-row">
-<td colspan="6" style="text-align:right;font-weight:700;color:var(--text)">TOTAL</td>
-<td colspan="2"></td>
+<td colspan="8" style="text-align:right;font-weight:700;color:var(--text)">TOTAL</td>
 <td class="ctr" style="font-weight:700">${totalPOBoxes}</td>
 <td class="ctr" style="font-weight:700">${totalProdBoxes||'—'}</td>
 <td class="ctr" style="font-weight:700;color:${totalDiffColor}">${totalDiffStr}</td>
@@ -709,7 +700,7 @@ main.innerHTML=`
 <h1>PO: ${po.poNumber} <span class="status-badge ${comp?'sb-complete':'sb-active'}">${comp?'Ready for Loading':'Active'}</span></h1>
 ${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${po.nickname} <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">edit</button></div>`:`<button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">+ Add nickname</button>`}
 <div class="po-meta">
-<span class="tag">Factory: <b>${po.factory||'N/A'}</b></span>
+<span class="tag">Factory: <b>${po.factory||'N/A'}</b> <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif" onclick="editFactory('${id}')">edit</button></span>
 <span class="tag">Date: <b>${po.date||'N/A'}</b></span>
 <span class="tag">Size: <b>${po.size||'N/A'}</b></span>
 <span class="tag">Containers: <b>${po.totalContainers||0}</b></span>
@@ -730,9 +721,9 @@ ${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>S No</th><th>Production code</th><th>Box sticker</th><th>Faces</th><th>Finishing</th><th>Image</th>
-<th>Matching</th><th>QC</th><th class="ctr">PO boxes</th><th class="ctr">Production boxes</th><th class="ctr">Diff (+/-)</th>
-<th class="ctr">Box/Pallet</th><th class="ctr">No. of pallets</th><th class="ctr">Total</th>
+<th>S No</th><th>Code</th><th>Sticker</th><th>Faces</th><th>Finish</th><th>Image</th>
+<th>Matching</th><th>QC</th><th class="ctr">PO boxes</th><th class="ctr">Prod. boxes</th><th class="ctr">+/-</th>
+<th colspan="3" class="ctr">Pallet packing</th>
 </tr></thead>
 <tbody>${tableRows}</tbody>
 </table>
@@ -833,6 +824,27 @@ function saveNickname(id){
 const po=allPOs.find(p=>p.id===id);if(!po)return;
 const el=$('edit-nickname-input');
 po.nickname=el?el.value.trim():'';
+closeModal();savePO(id);saveIndex();renderPO(id);
+}
+function editFactory(id){
+const po=allPOs.find(p=>p.id===id);if(!po)return;
+$('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<h3>Edit factory</h3>
+<p style="font-size:13px;color:var(--text2);margin-bottom:12px">${po.poNumber}</p>
+<label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Factory name</label>
+<input type="text" id="edit-factory-input" value="${po.factory||''}" placeholder="e.g. VELZONE, VELLOZA..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+<div class="btn-row">
+<button class="btn" onclick="closeModal()">Cancel</button>
+<button class="btn btn-primary" onclick="saveFactory('${id}')">Save</button>
+</div>
+</div></div>`;
+setTimeout(()=>{const el=$('edit-factory-input');if(el)el.focus()},100);
+}
+function saveFactory(id){
+const po=allPOs.find(p=>p.id===id);if(!po)return;
+const el=$('edit-factory-input');
+po.factory=el?el.value.trim():'';
 closeModal();savePO(id);saveIndex();renderPO(id);
 }
 function deleteDesign(poId,pi){
