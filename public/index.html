@@ -132,8 +132,9 @@ nav .nav-links a{font-size:12px;padding:5px 10px}
 .print-btn{padding:6px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--primary);background:var(--bg2);color:var(--primary);font-family:'DM Sans',sans-serif}
 .print-btn:hover{background:var(--primary-l)}
 @media print{
-body{background:#fff!important;padding:0!important}
-nav,.back-btn,.stats-grid,.filter-bar,.print-btn,.check-btn,.check-group input,.del-btn,.add-pallet-btn,.qty-input,.pallet-input,button,.po-meta-edit{display:none!important}
+@page{size:auto;margin:0}
+body{background:#fff!important;padding:10mm!important}
+nav,.back-btn,.stats-grid,.filter-bar,.print-btn,.check-btn,.check-group input,.del-btn,.add-pallet-btn,.qty-input,.pallet-input,button,.po-meta-edit,.po-nickname-print-hide{display:none!important}
 .container{padding:0!important;max-width:100%!important}
 .po-detail-header{margin-bottom:10px!important}
 .po-detail-header h1{font-size:18px!important}
@@ -146,7 +147,6 @@ td{font-size:10px!important;padding:3px 4px!important}
 td img.tile-img{width:50px!important;height:25px!important}
 .status-badge{font-size:9px!important;padding:1px 6px!important}
 .check-group{display:none!important}
-td[data-print-match],td[data-print-qc]{display:table-cell!important}
 .no-print{display:none!important}
 .print-match-val,.print-qc-val{display:inline!important;font-size:10px}
 }
@@ -259,7 +259,7 @@ main.innerHTML=`
 <div class="stat-card" style="cursor:pointer" onclick="showPOList('all')"><div class="label">Total POs</div><div class="value blue">${totalPOs}</div></div>
 <div class="stat-card" style="cursor:pointer" onclick="showPOList('active')"><div class="label">Active</div><div class="value amber">${totalActive}</div></div>
 <div class="stat-card" style="cursor:pointer" onclick="showPOList('completed')"><div class="label">Completed</div><div class="value green">${totalComplete}</div></div>
-<div class="stat-card"><div class="label">Factories</div><div class="value">${fNames.length}</div></div>
+<div class="stat-card" style="cursor:pointer" onclick="clearDashPOList()"><div class="label">Factories</div><div class="value">${fNames.length}</div></div>
 </div>
 <div id="dash-po-list"></div>
 ${fNames.length?`<div class="section-title">Factories</div>
@@ -272,6 +272,11 @@ return`<div class="factory-card" onclick="go('factory','${encodeURIComponent(f)}
 <div class="progress-row">Avg progress<div class="progress-bar"><div class="progress-fill pf-blue" style="width:${Math.round(avgProgress)}%"></div></div>${Math.round(avgProgress)}%</div>
 </div>`}).join('')}</div>`
 :`<div class="empty-state"><h3>No POs uploaded yet</h3><p>Upload your first Purchase Order to get started</p><br><button class="btn-upload" onclick="go('upload')">+ Upload PO</button></div>`}`;
+}
+
+function clearDashPOList(){
+const el=document.getElementById('dash-po-list');
+if(el)el.innerHTML='';
 }
 
 function showPOList(filter){
@@ -761,7 +766,7 @@ main.innerHTML=`
 <button class="back-btn" onclick="go('${po.factory?'factory':'dashboard'}','${encodeURIComponent(po.factory||'')}')">← Back</button>
 <div class="po-detail-header">
 <h1>PO: ${po.poNumber} <span class="status-badge ${comp?'sb-complete':'sb-active'}">${comp?'Ready for Loading':'Active'}</span></h1>
-${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${po.nickname} <button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">edit</button></div>`:`<button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">+ Add nickname</button>`}
+${po.nickname?`<div class="po-nickname-print-hide" style="font-size:15px;color:var(--text2);margin-top:-2px">${po.nickname} <button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">edit</button></div>`:`<button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">+ Add nickname</button>`}
 <div class="po-meta">
 <span class="tag">Factory: <b>${po.factory||'N/A'}</b> <button class="po-meta-edit" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif" onclick="editFactory('${id}')">edit</button></span>
 <span class="tag">Date: <b>${po.date||'N/A'}</b></span>

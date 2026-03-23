@@ -1,4 +1,4 @@
-const CACHE='vz-tracker-v4';
+const CACHE='vz-tracker-v7';
 
 self.addEventListener('install',e=>{
   self.skipWaiting();
