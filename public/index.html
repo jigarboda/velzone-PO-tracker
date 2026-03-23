@@ -157,6 +157,7 @@ allPOs=(data||[]).map(row=>{
 const po=row.data;
 po.id=row.id;po.poNumber=row.po_number;po.nickname=row.nickname||'';
 po.factory=row.factory||'';po.date=row.po_date||'';
+po.updated_at=row.updated_at||'';
 return po;
 });
 }catch(e){console.error('Load failed',e);allPOs=[]}
@@ -861,24 +862,32 @@ async function init(){
 main.innerHTML='<div class="loading">Loading POs...</div>';
 await loadData();
 go('dashboard');
-db.channel('po-changes').on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},async(payload)=>{
-if(payload.eventType==='DELETE'){
-allPOs=allPOs.filter(p=>p.id!==payload.old.id);
-}else{
-const row=payload.new;
-const po=row.data;
-po.id=row.id;po.poNumber=row.po_number;po.nickname=row.nickname||'';
-po.factory=row.factory||'';po.date=row.po_date||'';
-const idx=allPOs.findIndex(p=>p.id===po.id);
-if(idx>=0)allPOs[idx]=po;else allPOs.unshift(po);
-}
+try{
+db.channel('po-changes')
+.on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},async(payload)=>{
+await loadData();
 const page=window._page||'dashboard';
 const param=window._param;
 if(page==='dashboard')renderDashboard();
 else if(page==='factory')renderFactory(param);
 else if(page==='timeline')renderTimeline();
 else if(page==='po')renderPO(param);
-}).subscribe();
+}).subscribe((status)=>{console.log('Realtime:',status)});
+}catch(e){console.warn('Realtime setup failed:',e)}
+setInterval(async()=>{
+if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'))return;
+const oldJSON=JSON.stringify(allPOs.map(p=>p.id+':'+(p.updated_at||'')));
+await loadData();
+const newJSON=JSON.stringify(allPOs.map(p=>p.id+':'+(p.updated_at||'')));
+if(oldJSON!==newJSON){
+const page=window._page||'dashboard';
+const param=window._param;
+if(page==='dashboard')renderDashboard();
+else if(page==='factory')renderFactory(param);
+else if(page==='timeline')renderTimeline();
+else if(page==='po')renderPO(param);
+}
+},10000);
 }
 init();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
