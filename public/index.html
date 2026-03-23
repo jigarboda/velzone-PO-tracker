@@ -148,7 +148,7 @@ td img.tile-img{width:50px!important;height:25px!important}
 .status-badge{font-size:9px!important;padding:1px 6px!important}
 .check-group{display:none!important}
 .no-print{display:none!important}
-.print-match-val,.print-qc-val{display:inline!important;font-size:10px}
+.print-match-val,.print-qc-val,.print-pallet-val{display:inline!important;font-size:10px}
 }
 </style>
 </head>
@@ -684,6 +684,12 @@ return images;
 
 window._poFilters={surface:'ALL',matching:false,qc:false,prodBox:false,pallet:false};
 function setFilter(key,val){window._poFilters[key]=val;renderPO(window._param)}
+function printPO(poNumber){
+const origTitle=document.title;
+document.title=poNumber;
+window.print();
+setTimeout(()=>{document.title=origTitle},1000);
+}
 
 function renderPO(id){
 const po=allPOs.find(p=>p.id===id);
@@ -713,20 +719,26 @@ totalPOBoxes+=poBox;totalProdBoxes+=prodBox;totalPalletPacked+=totalPacked;
 const diffColor=diff===0?'var(--text2)':diff>0?'var(--green)':'var(--red)';
 const diffStr=diff===0?'—':diff>0?'+'+diff:String(diff);
 let palletHTML='';
+let palletPrintHTML='';
 if(ppRows.length===0){
 palletHTML=`<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add</button>`;
+palletPrintHTML='—';
 }else{
-palletHTML=`<table style="width:100%;border-collapse:collapse;min-width:0">`;
+palletHTML=`<table class="no-print" style="width:100%;border-collapse:collapse;min-width:0">`;
 ppRows.forEach((pp,ri)=>{
 const packed=Math.round((parseFloat(pp.boxPerPallet)||0)*pp.count);
 palletHTML+=`<tr><td style="padding:2px 3px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.boxPerPallet}" onchange="updPallet('${id}',${pi},${ri},'bpp',this.value)"></td>
 <td style="padding:2px 3px;border:none;text-align:center;font-size:11px"><input class="pallet-input" value="${pp.count}" onchange="updPallet('${id}',${pi},${ri},'cnt',this.value)"></td>
 <td style="padding:2px 3px;border:none;text-align:center;font-size:11px;white-space:nowrap">${packed} <button class="del-btn" onclick="delPallet('${id}',${pi},${ri})">✕</button></td></tr>`;
 });
-palletHTML+=`</table><div style="text-align:center;margin-top:3px">
+palletHTML+=`</table><div class="no-print" style="text-align:center;margin-top:3px">
 <button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+</button>
 ${totalPacked>0?`<span style="margin-left:4px;font-size:10px;color:var(--green);font-weight:600">${Math.round(totalPacked)}</span>`:''}
 </div>`;
+palletPrintHTML=ppRows.map(pp=>{
+const packed=Math.round((parseFloat(pp.boxPerPallet)||0)*pp.count);
+return `${pp.boxPerPallet}×${pp.count}=${packed}`;
+}).join('<br>')+`<br><b>${Math.round(totalPacked)}</b>`;
 }
 const matchText=matchChecked?(p.matching.date||'Done'):'Pending';
 const qcText=qcChecked?(p.qc.date||'Done'):'Pending';
@@ -748,7 +760,7 @@ tableRows+=`<tr>
 <td class="ctr" style="font-weight:600">${poBox||'—'}</td>
 <td><input type="number" class="qty-input" value="${prodBox||''}" placeholder="0" onchange="setProdBoxes('${id}',${pi},this.value)"><span class="print-match-val" style="display:none">${prodBox||'—'}</span></td>
 <td class="ctr" style="font-weight:600;color:${diffColor}">${prodBox?diffStr:'—'}</td>
-<td colspan="3" style="padding:4px">${palletHTML}</td>
+<td colspan="3" style="padding:4px">${palletHTML}<span class="print-pallet-val" style="display:none;font-size:9px">${palletPrintHTML}</span></td>
 </tr>`});
 const totalDiff=totalProdBoxes-totalPOBoxes;
 const totalDiffColor=totalDiff===0?'var(--text2)':totalDiff>0?'var(--green)':'var(--red)';
@@ -787,7 +799,7 @@ ${po.nickname?`<div class="po-nickname-print-hide" style="font-size:15px;color:v
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
 <div class="section-title" style="margin:0">Product tracking</div>
-<button class="print-btn" onclick="window.print()">Print</button>
+<button class="print-btn" onclick="printPO('${po.poNumber}')">Print</button>
 </div>
 <div class="filter-bar no-print">
 <span class="flabel">Surface:</span>
