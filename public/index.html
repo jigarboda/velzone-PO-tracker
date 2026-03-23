@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<meta name="theme-color" content="#0f1729">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Velzone Granito — PO Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f0f2f5;--bg2:#fff;--bg3:#f7f8fb;--nav:#0f1729;--primary:#2563eb;--primary-l:#dbeafe;--green:#16a34a;--green-l:#dcfce7;--amber:#d97706;--amber-l:#fef3c7;--red:#dc2626;--red-l:#fee2e2;--text:#111827;--text2:#6b7280;--text3:#9ca3af;--border:#e5e7eb;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,0.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px}
+nav{background:var(--nav);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+nav .logo{font-size:17px;font-weight:700;letter-spacing:-0.3px;white-space:nowrap}
+nav .logo span{color:#60a5fa;font-weight:400;font-size:13px;margin-left:6px}
+nav .nav-links{display:flex;gap:4px;margin-left:auto}
+nav .nav-links a{color:rgba(255,255,255,0.6);text-decoration:none;font-size:13px;font-weight:500;padding:6px 14px;border-radius:8px;transition:all .15s;cursor:pointer}
+nav .nav-links a:hover,nav .nav-links a.active{color:#fff;background:rgba(255,255,255,0.1)}
+.container{max-width:1280px;margin:0 auto;padding:20px}
+.page-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.page-sub{font-size:14px;color:var(--text2);margin-bottom:24px}
+.card{background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);padding:20px;box-shadow:var(--shadow)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);padding:16px 20px}
+.stat-card .label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+.stat-card .value{font-size:28px;font-weight:700;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.stat-card .value.blue{color:var(--primary)}
+.stat-card .value.green{color:var(--green)}
+.stat-card .value.amber{color:var(--amber)}
+.stat-card .value.red{color:var(--red)}
+.factory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.factory-card{background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);padding:20px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow)}
+.factory-card:hover{border-color:var(--primary);box-shadow:0 4px 12px rgba(37,99,235,0.1)}
+.factory-card h3{font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.factory-card h3 .badge{font-size:11px;font-weight:600;background:var(--primary-l);color:var(--primary);padding:2px 10px;border-radius:12px}
+.factory-card .f-stats{display:flex;gap:16px;font-size:13px;color:var(--text2)}
+.factory-card .f-stats strong{color:var(--text);font-weight:600}
+.progress-row{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--text2)}
+.progress-bar{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.pf-blue{background:var(--primary)}
+.pf-green{background:var(--green)}
+.pf-amber{background:var(--amber)}
+.po-list{display:flex;flex-direction:column;gap:12px}
+.po-card{background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);padding:16px 20px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow)}
+.po-card:hover{border-color:var(--primary)}
+.po-card .po-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.po-card .po-header h3{font-size:15px;font-weight:700}
+.po-card .po-header .meta{display:flex;gap:12px;font-size:12px;color:var(--text2)}
+.po-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.po-progress .pp-item{text-align:center;font-size:11px;color:var(--text2)}
+.po-progress .pp-item .pp-val{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+.status-badge{display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:600}
+.sb-active{background:var(--primary-l);color:var(--primary)}
+.sb-complete{background:var(--green-l);color:var(--green)}
+.sb-warning{background:var(--amber-l);color:var(--amber)}
+.sb-danger{background:var(--red-l);color:var(--red)}
+.timeline-card{display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);cursor:pointer;transition:all .15s}
+.timeline-card:hover{border-color:var(--primary)}
+.timeline-card .days{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:70px;text-align:center}
+.timeline-card .days small{display:block;font-size:10px;font-weight:500;color:var(--text2);font-family:'DM Sans',sans-serif}
+.timeline-card .tl-info{flex:1}
+.timeline-card .tl-info h3{font-size:14px;font-weight:600;margin-bottom:2px}
+.timeline-card .tl-info p{font-size:12px;color:var(--text2)}
+.tl-list{display:flex;flex-direction:column;gap:10px}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:60px 40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--primary);background:var(--primary-l)}
+.upload-zone h3{font-size:18px;font-weight:600;margin-bottom:8px}
+.upload-zone p{font-size:13px;color:var(--text2)}
+.upload-zone input{display:none}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2)}
+table{width:100%;border-collapse:collapse;min-width:1200px}
+thead{background:var(--bg3)}
+th{padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:8px 12px;font-size:13px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+th.ctr,td.ctr{text-align:center}
+tr.sub-row td{background:#fafbfc;font-size:12px;border-bottom:1px solid #eef0f2}
+tr.total-row td{background:var(--green-l);font-weight:600;color:var(--green);border-top:2px solid #bbf7d0;font-size:13px}
+td img.tile-img{width:120px;height:60px;object-fit:contain;border-radius:4px;border:1px solid var(--border);display:block;background:var(--bg3)}
+.check-group{display:flex;align-items:center;gap:6px}
+.check-btn{width:28px;height:28px;border-radius:8px;border:2px solid var(--border);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s}
+.check-btn.done{background:var(--green);border-color:var(--green);color:#fff}
+.date-input{width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif}
+.qty-input{width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:center}
+.add-pallet-btn{display:inline-flex;align-items:center;gap:4px;background:var(--primary-l);color:var(--primary);border:none;padding:4px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.add-pallet-btn:hover{background:#c7d2fe}
+.pallet-input{width:55px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;font-family:'JetBrains Mono',monospace}
+.del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px}
+.po-detail-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.po-detail-header h1{font-size:22px;font-weight:700}
+.po-meta{display:flex;gap:12px;flex-wrap:wrap}
+.po-meta .tag{background:var(--bg3);padding:4px 14px;border-radius:8px;font-size:12px;font-weight:500;color:var(--text2);border:1px solid var(--border)}
+.po-meta .tag b{color:var(--text);font-weight:600}
+.section-title{font-size:15px;font-weight:600;margin:20px 0 12px;display:flex;align-items:center;gap:8px}
+.back-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:8px;font-family:'DM Sans',sans-serif}
+.back-btn:hover{background:var(--bg3);color:var(--text)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state h3{font-size:18px;color:var(--text);margin-bottom:8px}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border-radius:var(--radius);padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.modal label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;margin-top:12px}
+.modal input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif}
+.modal .btn-row{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.btn{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg2);font-family:'DM Sans',sans-serif;transition:all .15s}
+.btn:hover{background:var(--bg3)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-primary:hover{background:#1d4ed8}
+.btn-upload{background:var(--primary);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);font-size:14px}
+@media(max-width:768px){
+nav{padding:10px 14px;gap:10px}
+nav .logo{font-size:14px}
+nav .nav-links a{font-size:12px;padding:5px 10px}
+.container{padding:14px}
+.stats-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+.po-progress{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">Velzone Granito<span>PO Tracker</span></div>
+<div class="nav-links">
+<a onclick="go('dashboard')" id="nav-dashboard">Dashboard</a>
+<a onclick="go('timeline')" id="nav-timeline">Timeline</a>
+<a onclick="go('upload')" id="nav-upload">+ Upload PO</a>
+<a onclick="showSettings()" style="font-size:11px;opacity:0.5;cursor:pointer">⚙</a>
+</div>
+</nav>
+<div class="container" id="main"></div>
+<div id="modal-root"></div>
+
+<script>
+let allPOs=[];
+const $=id=>document.getElementById(id);
+const main=$('main');
+const today=()=>new Date().toISOString().split('T')[0];
+
+// === SUPABASE CONFIG ===
+// These will be set from config.js or entered on first run
+let SUPABASE_URL='';
+let SUPABASE_KEY='';
+let db=null;
+
+function initSupabase(){
+if(SUPABASE_URL&&SUPABASE_KEY){
+db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+return true;
+}
+return false;
+}
+
+async function loadData(){
+if(!db){allPOs=[];showConfig();return}
+try{
+const{data,error}=await db.from('purchase_orders').select('*').order('created_at',{ascending:false});
+if(error)throw error;
+allPOs=(data||[]).map(row=>{
+const po=row.data;
+po.id=row.id;po.poNumber=row.po_number;po.nickname=row.nickname||'';
+po.factory=row.factory||'';po.date=row.po_date||'';
+return po;
+});
+}catch(e){console.error('Load failed',e);allPOs=[]}
+}
+
+async function saveIndex(){}
+
+let _savePending={};
+function savePO(poId){
+_savePending[poId]=true;
+if(!_savePending._timer)_savePending._timer=setTimeout(async()=>{
+const ids=Object.keys(_savePending).filter(k=>k!=='_timer');
+_savePending={};
+for(const id of ids){
+const po=allPOs.find(p=>p.id===id);if(!po)continue;
+try{
+let poData={...po};
+const dataStr=JSON.stringify(poData);
+if(dataStr.length>800000){
+poData={...po,products:po.products.map(p=>({...p,image:null}))};
+}
+const row={id:po.id,po_number:po.poNumber,nickname:po.nickname||'',factory:po.factory||'',po_date:po.date||'',size:po.size||'',data:poData};
+const{error}=await db.from('purchase_orders').upsert(row,{onConflict:'id'});
+if(error)throw error;
+}catch(e){console.error('Save failed for PO '+po.id,e)}
+}
+},500);
+}
+async function saveData(){for(const po of allPOs)savePO(po.id)}
+
+function showConfig(){
+main.innerHTML=`
+<div style="max-width:500px;margin:60px auto;text-align:center">
+<h1 class="page-title" style="margin-bottom:8px">Velzone Granito</h1>
+<p class="page-sub" style="margin-bottom:32px">Connect to your Supabase database to get started</p>
+<div class="card" style="text-align:left">
+<label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Supabase Project URL</label>
+<input type="text" id="cfg-url" placeholder="https://xxxxx.supabase.co" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:16px" value="${localStorage.getItem('vz-sb-url')||''}">
+<label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Supabase Anon Key</label>
+<input type="text" id="cfg-key" placeholder="eyJhbGciOi..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:20px" value="${localStorage.getItem('vz-sb-key')||''}">
+<button class="btn btn-primary" style="width:100%;padding:12px" onclick="connectDB()">Connect</button>
+<p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Find these in your Supabase Dashboard → Settings → API</p>
+</div>
+</div>`;
+}
+
+async function connectDB(){
+const url=$('cfg-url').value.trim();
+const key=$('cfg-key').value.trim();
+if(!url||!key)return;
+SUPABASE_URL=url;SUPABASE_KEY=key;
+localStorage.setItem('vz-sb-url',url);
+localStorage.setItem('vz-sb-key',key);
+initSupabase();
+await loadData();
+go('dashboard');
+}
+
+function go(page,param){
+window._page=page;window._param=param;render()
+}
+
+function render(){
+const page=window._page||'dashboard';
+const param=window._param;
+document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+const navEl=$('nav-'+page);if(navEl)navEl.classList.add('active');
+if(page==='dashboard')renderDashboard();
+else if(page==='factory')renderFactory(param);
+else if(page==='timeline')renderTimeline();
+else if(page==='upload')renderUpload();
+else if(page==='po')renderPO(param);
+}
+
+function getProgress(po){
+const n=po.products.length;if(!n)return{matching:0,qc:0,qty:0,pallet:0};
+const m=po.products.filter(p=>p.matching&&p.matching.done).length;
+const q=po.products.filter(p=>p.qc&&p.qc.done).length;
+const y=po.products.filter(p=>p.productionBoxes>0).length;
+const k=po.products.filter(p=>p.palletPacking&&p.palletPacking.length>0).length;
+return{matching:Math.round(m/n*100),qc:Math.round(q/n*100),qty:Math.round(y/n*100),pallet:Math.round(k/n*100),
+matchingN:`${m}/${n}`,qcN:`${q}/${n}`,qtyN:`${y}/${n}`,palletN:`${k}/${n}`}
+}
+function isComplete(po){const p=getProgress(po);return p.matching===100&&p.qc===100&&p.qty===100&&p.pallet===100}
+function daysAgo(dateStr){
+if(!dateStr)return 0;const d=new Date(dateStr);const now=new Date();return Math.floor((now-d)/(1000*60*60*24))
+}
+
+function renderDashboard(){
+const factories={};
+allPOs.forEach(po=>{const f=po.factory||'Unknown';if(!factories[f])factories[f]={pos:[],active:0,complete:0};factories[f].pos.push(po);if(isComplete(po))factories[f].complete++;else factories[f].active++});
+const totalActive=allPOs.filter(p=>!isComplete(p)).length;
+const totalComplete=allPOs.filter(p=>isComplete(p)).length;
+const totalPOs=allPOs.length;
+const fNames=Object.keys(factories);
+main.innerHTML=`
+<h1 class="page-title">Dashboard</h1>
+<p class="page-sub">Overview of all factories and purchase orders</p>
+<div class="stats-grid">
+<div class="stat-card"><div class="label">Total POs</div><div class="value blue">${totalPOs}</div></div>
+<div class="stat-card"><div class="label">Active</div><div class="value amber">${totalActive}</div></div>
+<div class="stat-card"><div class="label">Completed</div><div class="value green">${totalComplete}</div></div>
+<div class="stat-card"><div class="label">Factories</div><div class="value">${fNames.length}</div></div>
+</div>
+${fNames.length?`<div class="section-title">Factories</div>
+<div class="factory-grid">${fNames.map(f=>{
+const fac=factories[f];
+const avgProgress=fac.pos.reduce((a,p)=>{const pr=getProgress(p);return a+(pr.matching+pr.qc+pr.qty+pr.pallet)/4},0)/fac.pos.length;
+return`<div class="factory-card" onclick="go('factory','${encodeURIComponent(f)}')">
+<h3>${f}<span class="badge">${fac.pos.length} POs</span></h3>
+<div class="f-stats"><div><strong>${fac.active}</strong> active</div><div><strong>${fac.complete}</strong> done</div></div>
+<div class="progress-row">Avg progress<div class="progress-bar"><div class="progress-fill pf-blue" style="width:${Math.round(avgProgress)}%"></div></div>${Math.round(avgProgress)}%</div>
+</div>`}).join('')}</div>`
+:`<div class="empty-state"><h3>No POs uploaded yet</h3><p>Upload your first Purchase Order to get started</p><br><button class="btn-upload" onclick="go('upload')">+ Upload PO</button></div>`}`;
+}
+
+function renderFactory(name,filter){
+name=decodeURIComponent(name);
+const pos=allPOs.filter(p=>(p.factory||'Unknown')===name);
+const allFinishings=new Set();
+pos.forEach(po=>po.products.forEach(p=>{if(p.finishing)allFinishings.add(p.finishing.toUpperCase())}));
+const finishList=[...allFinishings].sort();
+const activeFilter=filter||null;
+let filteredPOs=pos;
+if(activeFilter){
+filteredPOs=pos.filter(po=>po.products.some(p=>p.finishing&&p.finishing.toUpperCase()===activeFilter));
+}
+main.innerHTML=`
+<button class="back-btn" onclick="go('dashboard')">← Back to Dashboard</button>
+<h1 class="page-title">${name}</h1>
+<p class="page-sub">${pos.length} purchase orders${activeFilter?' · Filtered by: '+activeFilter:''}</p>
+${finishList.length>1?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+<button class="btn ${!activeFilter?'btn-primary':''}" style="font-size:12px;padding:5px 14px" onclick="renderFactory('${encodeURIComponent(name)}')">All</button>
+${finishList.map(f=>`<button class="btn ${activeFilter===f?'btn-primary':''}" style="font-size:12px;padding:5px 14px" onclick="renderFactory('${encodeURIComponent(name)}','${f}')">${f}</button>`).join('')}
+</div>`:''}
+<div class="po-list">${filteredPOs.map(po=>{
+const pr=getProgress(po);const comp=isComplete(po);
+const days=daysAgo(po.date);
+const matchCount=activeFilter?po.products.filter(p=>p.finishing&&p.finishing.toUpperCase()===activeFilter).length:0;
+return`<div class="po-card" onclick="go('po','${po.id}')">
+<div class="po-header">
+<h3>${po.poNumber}${po.nickname?` <span style="font-weight:400;color:var(--text2);font-size:13px">· ${po.nickname}</span>`:''} <span class="status-badge ${comp?'sb-complete':'sb-active'}">${comp?'Completed':'Active'}</span>
+${activeFilter?`<span class="status-badge sb-warning">${matchCount} ${activeFilter} design${matchCount>1?'s':''}</span>`:''}</h3>
+<div class="meta"><span>${po.date||'N/A'}</span><span>${po.size||''}</span><span>${po.products.length} designs</span>${days?`<span>${days} days ago</span>`:''}</div>
+</div>
+<div class="po-progress">
+<div class="pp-item"><div class="pp-val">${pr.matchingN}</div>Matching</div>
+<div class="pp-item"><div class="pp-val">${pr.qcN}</div>QC</div>
+<div class="pp-item"><div class="pp-val">${pr.qtyN}</div>Quantity</div>
+<div class="pp-item"><div class="pp-val">${pr.palletN}</div>Pallet</div>
+</div>
+<div class="progress-row" style="margin-top:10px">Overall<div class="progress-bar"><div class="progress-fill ${comp?'pf-green':'pf-blue'}" style="width:${Math.round((pr.matching+pr.qc+pr.qty+pr.pallet)/4)}%"></div></div>${Math.round((pr.matching+pr.qc+pr.qty+pr.pallet)/4)}%</div>
+</div>`}).join('')}${filteredPOs.length===0?'<div class="empty-state"><p>No POs with '+activeFilter+' finishing</p></div>':''}</div>`;
+}
+
+function renderTimeline(){
+const sorted=[...allPOs].sort((a,b)=>daysAgo(b.date)-daysAgo(a.date));
+main.innerHTML=`
+<h1 class="page-title">PO Timeline</h1>
+<p class="page-sub">All purchase orders sorted by age — oldest first</p>
+<div class="tl-list">${sorted.length?sorted.map(po=>{
+const days=daysAgo(po.date);const comp=isComplete(po);
+let color='var(--green)';let cls='sb-complete';
+if(!comp){if(days>45){color='var(--red)';cls='sb-danger'}else if(days>30){color='var(--amber)';cls='sb-warning'}else if(days>15){color='var(--amber)';cls='sb-warning'}else{color='var(--primary)';cls='sb-active'}}
+const pr=getProgress(po);
+return`<div class="timeline-card" onclick="go('po','${po.id}')">
+<div class="days" style="color:${color}">${days}<small>days</small></div>
+<div class="tl-info">
+<h3>${po.poNumber}${po.nickname?' · '+po.nickname:''} — ${po.factory||'Unknown'}</h3>
+<p>Date: ${po.date||'N/A'} · ${po.products.length} designs · ${po.size||''}</p>
+<div class="progress-row" style="margin-top:6px">Progress<div class="progress-bar"><div class="progress-fill ${comp?'pf-green':days>30?'pf-amber':'pf-blue'}" style="width:${Math.round((pr.matching+pr.qc+pr.qty+pr.pallet)/4)}%"></div></div>${Math.round((pr.matching+pr.qc+pr.qty+pr.pallet)/4)}%</div>
+</div>
+<span class="status-badge ${cls}">${comp?'Completed':days>45?'Delayed':days>30?'Warning':'Active'}</span>
+</div>`}).join(''):'<div class="empty-state"><h3>No POs yet</h3><p>Upload a PO to see the timeline</p></div>'}</div>`;
+}
+
+function renderUpload(){
+main.innerHTML=`
+<h1 class="page-title">Upload Purchase Order</h1>
+<p class="page-sub">Upload an Excel (.xlsx) PO file to start tracking</p>
+<div class="upload-zone" id="dropzone" onclick="$('file-input').click()">
+<h3>Drop Excel file here or click to browse</h3>
+<p>.xlsx files only</p>
+<input type="file" id="file-input" accept=".xlsx,.xls">
+</div>
+<div id="upload-status" style="margin-top:16px"></div>`;
+const dz=$('dropzone'),fi=$('file-input');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0])});
+fi.addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0])});
+}
+
+async function processFile(file){
+const status=$('upload-status');
+status.innerHTML='<div class="loading">Parsing Excel file...</div>';
+try{
+const buf=await file.arrayBuffer();
+const po=await parseExcel(buf);
+window._pendingPO=po;
+const existing=allPOs.find(p=>p.id===po.id);
+const oldNickname=existing?existing.nickname||'':'';
+status.innerHTML=`<div class="card" style="padding:20px">
+<h3 style="margin-bottom:4px">${po.poNumber}</h3>
+<p style="font-size:13px;color:var(--text2);margin-bottom:16px">${po.products.length} designs · Factory: ${po.factory||'Unknown'} · ${po.totalContainers||0} containers${existing?' · (Re-uploading — tracking data will be preserved)':''}</p>
+<label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Nickname (e.g. customer name, project)</label>
+<input type="text" id="po-nickname" value="${oldNickname}" placeholder="e.g. Ahmad Dubai Order, Hotel Project..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;margin-bottom:16px">
+<div style="display:flex;gap:8px">
+<button class="btn btn-primary" onclick="confirmUpload()">Save PO</button>
+<button class="btn" onclick="window._pendingPO=null;renderUpload()">Cancel</button>
+</div>
+</div>`;
+}catch(e){
+status.innerHTML=`<div class="card" style="border-left:4px solid var(--red);padding:16px">
+<strong style="color:var(--red)">Error parsing file</strong><br>
+<span style="font-size:13px;color:var(--text2)">${e.message}</span></div>`;
+console.error(e);
+}
+}
+async function confirmUpload(){
+const po=window._pendingPO;if(!po)return;
+const nicknameEl=$('po-nickname');
+po.nickname=(nicknameEl?nicknameEl.value:'').trim();
+if(allPOs.find(p=>p.id===po.id)){
+const idx=allPOs.findIndex(p=>p.id===po.id);
+po.products.forEach((np,i)=>{
+const old=allPOs[idx].products[i];
+if(old){np.matching=old.matching;np.qc=old.qc;np.qtyProduced=old.qtyProduced;np.palletPacking=old.palletPacking;np.productionBoxes=old.productionBoxes||0}
+});
+allPOs[idx]=po;
+}else{allPOs.push(po)}
+await saveIndex();savePO(po.id);
+window._pendingPO=null;
+go('po',po.id);
+}
+
+async function parseExcel(buf){
+const wb=XLSX.read(buf,{type:'array',cellDates:true});
+const ws=wb.Sheets[wb.SheetNames[0]];
+const poNumber=ws['K1']?String(ws['K1'].v).trim():'Unknown';
+const containers=ws['K2']?ws['K2'].v:0;
+const getV=(r,c)=>{const cell=ws[XLSX.utils.encode_cell({r:r-1,c:c})];return cell?cell.v:null};
+let headerRow=5;
+for(let r=1;r<=10;r++){
+const v=getV(r,0);
+if(v&&typeof v==='string'&&/^s\.?\s*no|^sl/i.test(v.trim())){headerRow=r;break}
+}
+const dataStart=headerRow+1;
+let size='';
+for(let r=1;r<headerRow;r++){
+const fv=getV(r,5);const kv=getV(r,10);
+if(kv&&typeof kv==='string'&&/\d+\s*[xX]\s*\d+/.test(kv)){size=kv.trim();break}
+if(fv&&typeof fv==='string'&&/size/i.test(fv)&&kv){size=String(kv).trim();break}
+}
+let dateVal='';
+for(let r=1;r<headerRow;r++){
+for(let c=0;c<11;c++){
+const v=getV(r,c);
+if(!v)continue;
+if(v instanceof Date){dateVal=v.toISOString().split('T')[0];break}
+if(typeof v==='string'){
+const dm=v.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+if(dm){dateVal=`${dm[3]}-${dm[2].padStart(2,'0')}-${dm[1].padStart(2,'0')}`;break}
+const dm2=v.match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+if(dm2){dateVal=`${dm2[1]}-${dm2[2].padStart(2,'0')}-${dm2[3].padStart(2,'0')}`;break}
+}
+}
+if(dateVal)break;
+}
+let factory='';
+for(let r=1;r<headerRow;r++){
+for(let c=0;c<11;c++){
+const v=getV(r,c);
+if(v&&typeof v==='string'&&/factory/i.test(v)){
+for(let fc=c+1;fc<12;fc++){
+const fv=getV(r,fc);
+if(fv&&typeof fv==='string'&&!/factory/i.test(fv)){factory=fv.trim();break}
+}
+break;
+}
+}
+if(factory)break;
+}
+const products=[];
+let row=dataStart;
+while(true){
+const cellA=ws[XLSX.utils.encode_cell({r:row-1,c:0})];
+if(!cellA||typeof cellA.v!=='number')break;
+const sno=cellA.v;
+const code=String(getV(row,1)||'').trim();
+const sticker=String(getV(row,2)||'').trim();
+const faces=String(getV(row,3)||'').trim();
+const finishing=String(getV(row,4)||'').trim();
+const sizeP=String(getV(row,5)||'').replace(/\\n/g,' ').replace(/\n/g,' ').trim();
+const cont=getV(row,7);
+const pallets1=getV(row,8);
+const bpp1=getV(row,9);
+let totalBox=0;
+const cellK=ws[XLSX.utils.encode_cell({r:row-1,c:10})];
+if(cellK){totalBox=typeof cellK.v==='number'?cellK.v:0}
+const palletSpecs=[];
+if(pallets1&&bpp1)palletSpecs.push({pallets:pallets1,boxPerPallet:bpp1});
+let nextRow=row+1;
+while(true){
+const nextA=ws[XLSX.utils.encode_cell({r:nextRow-1,c:0})];
+const nextI=ws[XLSX.utils.encode_cell({r:nextRow-1,c:8})];
+const nextJ=ws[XLSX.utils.encode_cell({r:nextRow-1,c:9})];
+if(nextA&&typeof nextA.v==='number')break;
+if(nextI&&nextJ&&typeof nextI.v==='number'&&typeof nextJ.v==='number'){
+palletSpecs.push({pallets:nextI.v,boxPerPallet:nextJ.v});
+nextRow++;
+}else break;
+}
+products.push({sno,code,sticker,faces,finishing,size:sizeP,image:null,containers:cont,palletSpecs,totalBox,
+matching:{done:false,date:null},qc:{done:false,date:null},qtyProduced:0,productionBoxes:0,palletPacking:[],excelRow:row});
+row=nextRow;
+}
+const productRows=products.map(p=>p.excelRow);
+const images=await extractImages(buf,productRows);
+products.forEach((p,i)=>{if(images[i])p.image=images[i];delete p.excelRow});
+if(!size&&products.length&&products[0].size){size=products[0].size.replace(/\\n/g,' ').replace(/\n/g,' ').replace(/CM$/i,'').trim()}
+return{id:poNumber.replace(/[^a-zA-Z0-9-]/g,''),poNumber,factory,date:dateVal,size,totalContainers:containers,
+totalPallets:products.reduce((a,p)=>a+p.palletSpecs.reduce((b,s)=>b+s.pallets,0),0),
+totalBoxes:products.reduce((a,p)=>a+(p.totalBox||0),0),products,createdAt:Date.now()};
+}
+
+async function extractImages(buf,productRows){
+const images={};
+try{
+const zip=await JSZip.loadAsync(buf);
+const drawingFile=zip.file('xl/drawings/drawing1.xml');
+const relsFile=zip.file('xl/drawings/_rels/drawing1.xml.rels');
+if(!drawingFile||!relsFile)return images;
+const drawXml=await drawingFile.async('string');
+const relsXml=await relsFile.async('string');
+const parser=new DOMParser();
+const relDoc=parser.parseFromString(relsXml,'text/xml');
+const relMap={};
+relDoc.querySelectorAll('Relationship').forEach(r=>{relMap[r.getAttribute('Id')]=r.getAttribute('Target')});
+const rasterExts=['png','jpg','jpeg','gif','webp'];
+function isRaster(p){return rasterExts.includes(p.split('.').pop().toLowerCase())}
+function resolveImgPath(rId){const t=relMap[rId];if(!t)return null;return 'xl/'+t.replace('../','')}
+async function tryLoadImage(path){
+const f=zip.file(path);if(!f)return null;
+const ab=await f.async('arraybuffer');
+const ext=path.split('.').pop().toLowerCase();
+const mimeMap={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp'};
+const mime=mimeMap[ext]||null;
+if(mime){
+try{return await createImageBitmap(new Blob([ab],{type:mime}))}catch(e){}
+try{
+const b64=btoa(new Uint8Array(ab).reduce((s,b)=>s+String.fromCharCode(b),''));
+const r=await new Promise(res=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>res(null);img.src='data:'+mime+';base64,'+b64});
+if(r&&(r.width||r.naturalWidth))return r;
+}catch(e){}
+}
+if(ext==='emf'||ext==='wmf'){
+try{
+const dv=new DataView(ab);
+const u8=new Uint8Array(ab);
+const pngSig=[0x89,0x50,0x4E,0x47];
+for(let off=0;off<u8.length-8;off++){
+if(u8[off]===pngSig[0]&&u8[off+1]===pngSig[1]&&u8[off+2]===pngSig[2]&&u8[off+3]===pngSig[3]){
+let endOff=off+8;
+while(endOff<u8.length-8){if(u8[endOff]===0x49&&u8[endOff+1]===0x45&&u8[endOff+2]===0x4E&&u8[endOff+3]===0x44){endOff+=8;break}endOff++}
+const pngBlob=new Blob([ab.slice(off,endOff)],{type:'image/png'});
+try{return await createImageBitmap(pngBlob)}catch(e){}
+}
+if(u8[off]===0xFF&&u8[off+1]===0xD8&&u8[off+2]===0xFF){
+let endOff=off+3;
+while(endOff<u8.length-1){if(u8[endOff]===0xFF&&u8[endOff+1]===0xD9){endOff+=2;break}endOff++}
+const jpgBlob=new Blob([ab.slice(off,endOff)],{type:'image/jpeg'});
+try{return await createImageBitmap(jpgBlob)}catch(e){}
+}
+}
+const bihSig=0x28;
+for(let off=0;off<u8.length-54;off++){
+if(dv.getUint32(off,true)===0x28){
+const w=dv.getInt32(off+4,true);
+const h=dv.getInt32(off+8,true);
+const bpp=dv.getUint16(off+14,true);
+const comp=dv.getUint32(off+16,true);
+if(w>10&&w<10000&&Math.abs(h)>10&&Math.abs(h)<10000&&[24,32].includes(bpp)&&comp===0){
+const absH=Math.abs(h);
+const rowBytes=Math.ceil(w*bpp/8);
+const padRow=Math.ceil(rowBytes/4)*4;
+const pixOff=off+40;
+if(pixOff+padRow*absH>ab.byteLength)continue;
+const canvas=document.createElement('canvas');
+canvas.width=w;canvas.height=absH;
+const ctx=canvas.getContext('2d');
+const imgData=ctx.createImageData(w,absH);
+const flip=h>0;
+for(let y=0;y<absH;y++){
+const srcY=flip?(absH-1-y):y;
+const srcOff=pixOff+srcY*padRow;
+for(let x=0;x<w;x++){
+const si=srcOff+x*(bpp/8);
+const di=(y*w+x)*4;
+imgData.data[di]=u8[si+2];
+imgData.data[di+1]=u8[si+1];
+imgData.data[di+2]=u8[si];
+imgData.data[di+3]=bpp===32?u8[si+3]:255;
+}
+}
+ctx.putImageData(imgData,0,0);
+return await createImageBitmap(canvas);
+}
+}
+}
+}catch(e){console.warn('EMF parse error:',e)}
+}
+return null;
+}
+const rowToIdx={};
+productRows.forEach((excelRow,idx)=>{rowToIdx[excelRow-1]=idx});
+const anchors=drawXml.split(/(?=<xdr:twoCellAnchor|<xdr:oneCellAnchor)/);
+for(let i=1;i<anchors.length;i++){
+const part=anchors[i];
+if(part.indexOf('<xdr:pic>')===-1&&part.indexOf('<xdr:pic ')===-1)continue;
+const fromColM=part.match(/<xdr:from>[\s\S]*?<xdr:col>(\d+)<\/xdr:col>/);
+const fromRowM=part.match(/<xdr:from>[\s\S]*?<xdr:row>(\d+)<\/xdr:row>/);
+if(!fromColM||!fromRowM)continue;
+const col=parseInt(fromColM[1]),row=parseInt(fromRowM[1]);
+if(col!==6)continue;
+const pIdx=rowToIdx[row];
+if(pIdx===undefined||images[pIdx])continue;
+const allRIds=[...part.matchAll(/r:embed="(rId\d+)"/g)].map(m=>m[1]);
+if(!allRIds.length)continue;
+let candidates=allRIds.map(rId=>resolveImgPath(rId)).filter(Boolean);
+let imgPath=null;
+for(const c of candidates){if(isRaster(c)){imgPath=c;break}}
+if(!imgPath)imgPath=candidates[0]||null;
+if(!imgPath)continue;
+const cropM=part.match(/<a:srcRect\s+([^/]*?)\/>/);
+let crop={};
+if(cropM){
+const cStr=cropM[1];
+const lM=cStr.match(/l="(\d+)"/),tM=cStr.match(/t="(\d+)"/),rM2=cStr.match(/r="(\d+)"/),bM=cStr.match(/b="(\d+)"/);
+if(lM)crop.l=parseInt(lM[1])/1000;
+if(tM)crop.t=parseInt(tM[1])/1000;
+if(rM2)crop.r=parseInt(rM2[1])/1000;
+if(bM)crop.b=parseInt(bM[1])/1000;
+}
+const rotM=part.match(/<a:xfrm[^>]*\srot="(\d+)"/);
+const rotation=rotM?parseInt(rotM[1])/60000:0;
+let bmp=null;
+try{bmp=await tryLoadImage(imgPath)}catch(e){}
+if(!bmp)continue;
+try{
+const w=bmp.width||bmp.naturalWidth;
+const h=bmp.height||bmp.naturalHeight;
+if(!w||!h)continue;
+let sx=0,sy=0,sw=w,sh=h;
+if(crop.l)sx=Math.round(w*crop.l/100);
+if(crop.t)sy=Math.round(h*crop.t/100);
+sw=Math.round(w*(1-(crop.l||0)/100-(crop.r||0)/100));
+sh=Math.round(h*(1-(crop.t||0)/100-(crop.b||0)/100));
+if(sw<=0)sw=w;if(sh<=0)sh=h;
+const canvas=document.createElement('canvas');
+const ctx=canvas.getContext('2d');
+if(rotation===90||rotation===270){canvas.width=sh;canvas.height=sw}
+else{canvas.width=sw;canvas.height=sh}
+ctx.save();
+ctx.translate(canvas.width/2,canvas.height/2);
+if(rotation===90){
+ctx.rotate(Math.PI/2);
+ctx.drawImage(bmp,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);
+}else if(rotation===270){
+ctx.rotate(-Math.PI/2);
+ctx.drawImage(bmp,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);
+}else if(rotation===180){
+ctx.rotate(Math.PI);
+ctx.drawImage(bmp,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);
+}else{
+ctx.drawImage(bmp,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);
+}
+ctx.restore();
+const maxW=200,maxH=100;
+let finalCanvas=canvas;
+if(canvas.width>maxW||canvas.height>maxH){
+const scale=Math.min(maxW/canvas.width,maxH/canvas.height);
+const thumbCanvas=document.createElement('canvas');
+thumbCanvas.width=Math.round(canvas.width*scale);
+thumbCanvas.height=Math.round(canvas.height*scale);
+const tCtx=thumbCanvas.getContext('2d');
+tCtx.drawImage(canvas,0,0,thumbCanvas.width,thumbCanvas.height);
+finalCanvas=thumbCanvas;
+}
+images[pIdx]=finalCanvas.toDataURL('image/jpeg',0.5);
+}catch(imgErr){console.warn('Image error:',imgErr.message)}
+}
+}catch(e){console.error('Image extraction error:',e)}
+return images;
+}
+
+function renderPO(id){
+const po=allPOs.find(p=>p.id===id);
+if(!po){main.innerHTML='<div class="empty-state"><h3>PO not found</h3></div>';return}
+const pr=getProgress(po);const comp=isComplete(po);
+let tableRows='';
+let totalPOBoxes=0,totalProdBoxes=0,totalPalletPacked=0;
+po.products.forEach((p,pi)=>{
+const palletRows=Math.max(1,(p.palletPacking||[]).length);
+const totalSubRows=p.palletSpecs.length>1?p.palletSpecs.length:1;
+const matchChecked=p.matching&&p.matching.done;
+const qcChecked=p.qc&&p.qc.done;
+const ppRows=p.palletPacking||[];
+const totalPacked=ppRows.reduce((a,r)=>{const bpp=parseFloat(r.boxPerPallet)||0;return a+bpp*r.count},0);
+const poBox=p.totalBox||0;
+const prodBox=p.productionBoxes||0;
+const diff=prodBox-poBox;
+totalPOBoxes+=poBox;totalProdBoxes+=prodBox;totalPalletPacked+=totalPacked;
+const diffColor=diff===0?'var(--text2)':diff>0?'var(--green)':'var(--red)';
+const diffStr=diff===0?'—':diff>0?'+'+diff:String(diff);
+tableRows+=`<tr>
+<td rowspan="${totalSubRows}"><div style="display:flex;align-items:center;gap:4px">${p.sno}<button class="del-btn" style="font-size:11px;opacity:0.4" onclick="event.stopPropagation();deleteDesign('${id}',${pi})" title="Delete design">✕</button></div></td>
+<td rowspan="${totalSubRows}" style="font-weight:600">${p.code}</td>
+<td rowspan="${totalSubRows}" style="font-size:12px">${p.sticker||''}</td>
+<td rowspan="${totalSubRows}">${p.faces}</td>
+<td rowspan="${totalSubRows}"><span class="status-badge ${p.finishing==='GLOSSY'?'sb-warning':p.finishing==='MATT'?'sb-active':'sb-complete'}">${p.finishing}</span></td>
+<td rowspan="${totalSubRows}">${p.image?`<img src="${p.image}" class="tile-img">`:'—'}</td>
+<td rowspan="${totalSubRows}">
+<div class="check-group">
+<button class="check-btn ${matchChecked?'done':''}" onclick="toggleMatching('${id}',${pi})">${matchChecked?'✓':''}</button>
+<input type="date" class="date-input" value="${p.matching&&p.matching.date||''}" onchange="setMatchDate('${id}',${pi},this.value)" ${matchChecked?'':'style="opacity:0.4"'}>
+</div></td>
+<td rowspan="${totalSubRows}">
+<div class="check-group">
+<button class="check-btn ${qcChecked?'done':''}" onclick="toggleQC('${id}',${pi})">${qcChecked?'✓':''}</button>
+<input type="date" class="date-input" value="${p.qc&&p.qc.date||''}" onchange="setQCDate('${id}',${pi},this.value)" ${qcChecked?'':'style="opacity:0.4"'}>
+</div></td>
+<td rowspan="${totalSubRows}" class="ctr" style="font-weight:600">${poBox||'—'}</td>
+<td rowspan="${totalSubRows}">
+<input type="number" class="qty-input" value="${prodBox||''}" placeholder="0" onchange="setProdBoxes('${id}',${pi},this.value)">
+</td>
+<td rowspan="${totalSubRows}" class="ctr" style="font-weight:600;color:${diffColor}">${prodBox?diffStr:'—'}</td>`;
+if(ppRows.length===0){
+tableRows+=`<td colspan="3" style="text-align:center">
+<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add pallet</button></td></tr>`;
+}else{
+tableRows+=`<td class="ctr"><input class="pallet-input" value="${ppRows[0].boxPerPallet}" onchange="updPallet('${id}',${pi},0,'bpp',this.value)"></td>
+<td class="ctr"><input class="pallet-input" value="${ppRows[0].count}" onchange="updPallet('${id}',${pi},0,'cnt',this.value)"></td>
+<td class="ctr" style="white-space:nowrap">${Math.round((parseFloat(ppRows[0].boxPerPallet)||0)*ppRows[0].count)} <button class="del-btn" onclick="delPallet('${id}',${pi},0)">✕</button></td></tr>`;
+for(let ri=1;ri<ppRows.length;ri++){
+tableRows+=`<tr class="sub-row">
+<td class="ctr"><input class="pallet-input" value="${ppRows[ri].boxPerPallet}" onchange="updPallet('${id}',${pi},${ri},'bpp',this.value)"></td>
+<td class="ctr"><input class="pallet-input" value="${ppRows[ri].count}" onchange="updPallet('${id}',${pi},${ri},'cnt',this.value)"></td>
+<td class="ctr" style="white-space:nowrap">${Math.round((parseFloat(ppRows[ri].boxPerPallet)||0)*ppRows[ri].count)} <button class="del-btn" onclick="delPallet('${id}',${pi},${ri})">✕</button></td></tr>`;
+}
+tableRows+=`<tr class="sub-row"><td colspan="3" style="text-align:center">
+<button class="add-pallet-btn" onclick="addPallet('${id}',${pi})">+ Add pallet</button>
+${totalPacked>0?`<span style="margin-left:10px;font-size:12px;color:var(--green);font-weight:600">Total: ${Math.round(totalPacked)} boxes</span>`:''}</td></tr>`;
+}
+if(p.palletSpecs.length>1&&ppRows.length===0){
+for(let si=1;si<p.palletSpecs.length;si++){
+tableRows+=`<tr class="sub-row"><td colspan="3"></td></tr>`;
+}
+}
+});
+const totalDiff=totalProdBoxes-totalPOBoxes;
+const totalDiffColor=totalDiff===0?'var(--text2)':totalDiff>0?'var(--green)':'var(--red)';
+const totalDiffStr=totalProdBoxes?((totalDiff===0?'—':totalDiff>0?'+'+totalDiff:String(totalDiff))):'—';
+tableRows+=`<tr class="total-row">
+<td colspan="6" style="text-align:right;font-weight:700;color:var(--text)">TOTAL</td>
+<td colspan="2"></td>
+<td class="ctr" style="font-weight:700">${totalPOBoxes}</td>
+<td class="ctr" style="font-weight:700">${totalProdBoxes||'—'}</td>
+<td class="ctr" style="font-weight:700;color:${totalDiffColor}">${totalDiffStr}</td>
+<td colspan="3" class="ctr" style="font-weight:700">${totalPalletPacked?Math.round(totalPalletPacked)+' packed':''}</td>
+</tr>`;
+
+main.innerHTML=`
+<button class="back-btn" onclick="go('${po.factory?'factory':'dashboard'}','${encodeURIComponent(po.factory||'')}')">← Back</button>
+<div class="po-detail-header">
+<h1>PO: ${po.poNumber} <span class="status-badge ${comp?'sb-complete':'sb-active'}">${comp?'Ready for Loading':'Active'}</span></h1>
+${po.nickname?`<div style="font-size:15px;color:var(--text2);margin-top:-2px">${po.nickname} <button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">edit</button></div>`:`<button style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif" onclick="editNickname('${id}')">+ Add nickname</button>`}
+<div class="po-meta">
+<span class="tag">Factory: <b>${po.factory||'N/A'}</b></span>
+<span class="tag">Date: <b>${po.date||'N/A'}</b></span>
+<span class="tag">Size: <b>${po.size||'N/A'}</b></span>
+<span class="tag">Containers: <b>${po.totalContainers||0}</b></span>
+<span class="tag">Total Boxes: <b>${po.totalBoxes||0}</b></span>
+</div>
+</div>
+<div class="stats-grid" style="margin-bottom:20px">
+<div class="stat-card"><div class="label">Design Matching</div><div class="value ${pr.matching===100?'green':'blue'}">${pr.matchingN}</div>
+<div class="progress-row"><div class="progress-bar"><div class="progress-fill ${pr.matching===100?'pf-green':'pf-blue'}" style="width:${pr.matching}%"></div></div>${pr.matching}%</div></div>
+<div class="stat-card"><div class="label">QC</div><div class="value ${pr.qc===100?'green':'blue'}">${pr.qcN}</div>
+<div class="progress-row"><div class="progress-bar"><div class="progress-fill ${pr.qc===100?'pf-green':'pf-blue'}" style="width:${pr.qc}%"></div></div>${pr.qc}%</div></div>
+<div class="stat-card"><div class="label">Production boxes</div><div class="value ${pr.qty===100?'green':'blue'}">${pr.qtyN}</div>
+<div class="progress-row"><div class="progress-bar"><div class="progress-fill ${pr.qty===100?'pf-green':'pf-blue'}" style="width:${pr.qty}%"></div></div>${pr.qty}%</div></div>
+<div class="stat-card"><div class="label">Pallet Packing</div><div class="value ${pr.pallet===100?'green':'blue'}">${pr.palletN}</div>
+<div class="progress-row"><div class="progress-bar"><div class="progress-fill ${pr.pallet===100?'pf-green':'pf-blue'}" style="width:${pr.pallet}%"></div></div>${pr.pallet}%</div></div>
+</div>
+<div class="section-title">Product tracking</div>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>S No</th><th>Production code</th><th>Box sticker</th><th>Faces</th><th>Finishing</th><th>Image</th>
+<th>Matching</th><th>QC</th><th class="ctr">PO boxes</th><th class="ctr">Production boxes</th><th class="ctr">Diff (+/-)</th>
+<th class="ctr">Box/Pallet</th><th class="ctr">No. of pallets</th><th class="ctr">Total</th>
+</tr></thead>
+<tbody>${tableRows}</tbody>
+</table>
+</div>
+<div style="margin-top:16px;text-align:right">
+<button class="btn" style="color:var(--red);border-color:var(--red)" onclick="deletePO('${id}')">Delete PO</button>
+</div>`;
+}
+
+function toggleMatching(poId,pi){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+const prod=po.products[pi];
+if(!prod.matching)prod.matching={done:false,date:null};
+prod.matching.done=!prod.matching.done;
+if(prod.matching.done&&!prod.matching.date)prod.matching.date=today();
+if(!prod.matching.done)prod.matching.date=null;
+savePO(poId);renderPO(poId);
+}
+function setMatchDate(poId,pi,val){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+po.products[pi].matching.date=val;savePO(poId);
+}
+function toggleQC(poId,pi){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+const prod=po.products[pi];
+if(!prod.qc)prod.qc={done:false,date:null};
+prod.qc.done=!prod.qc.done;
+if(prod.qc.done&&!prod.qc.date)prod.qc.date=today();
+if(!prod.qc.done)prod.qc.date=null;
+savePO(poId);renderPO(poId);
+}
+function setQCDate(poId,pi,val){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+po.products[pi].qc.date=val;savePO(poId);
+}
+function setQty(poId,pi,val){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+po.products[pi].qtyProduced=parseInt(val)||0;savePO(poId);
+}
+function setProdBoxes(poId,pi,val){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+po.products[pi].productionBoxes=parseInt(val)||0;savePO(poId);renderPO(poId);
+}
+function addPallet(poId,pi){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+if(!po.products[pi].palletPacking)po.products[pi].palletPacking=[];
+po.products[pi].palletPacking.push({boxPerPallet:'',count:0});
+savePO(poId);renderPO(poId);
+}
+function updPallet(poId,pi,ri,field,val){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+const pp=po.products[pi].palletPacking[ri];
+if(field==='bpp')pp.boxPerPallet=val;
+else pp.count=parseInt(val)||0;
+savePO(poId);renderPO(poId);
+}
+function delPallet(poId,pi,ri){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+po.products[pi].palletPacking.splice(ri,1);
+savePO(poId);renderPO(poId);
+}
+function deletePO(id){
+const po=allPOs.find(p=>p.id===id);
+const name=po?(po.poNumber+(po.nickname?' ('+po.nickname+')':'')):'this PO';
+$('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<h3>Delete ${name}?</h3>
+<p style="font-size:13px;color:var(--text2)">This will permanently remove this PO and all its tracking data. This cannot be undone.</p>
+<div class="btn-row">
+<button class="btn" onclick="closeModal()">Cancel</button>
+<button class="btn" style="background:var(--red);color:#fff;border-color:var(--red)" onclick="confirmDeletePO('${id}')">Delete</button>
+</div>
+</div></div>`;
+}
+function closeModal(){$('modal-root').innerHTML=''}
+async function confirmDeletePO(id){
+closeModal();
+allPOs=allPOs.filter(p=>p.id!==id);
+try{await db.from('purchase_orders').delete().eq('id',id)}catch(e){}
+await saveIndex();go('dashboard');
+}
+function editNickname(id){
+const po=allPOs.find(p=>p.id===id);if(!po)return;
+$('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<h3>Edit nickname</h3>
+<p style="font-size:13px;color:var(--text2);margin-bottom:12px">${po.poNumber}</p>
+<label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Nickname</label>
+<input type="text" id="edit-nickname-input" value="${po.nickname||''}" placeholder="e.g. Ahmad Dubai, Hotel Project..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif">
+<div class="btn-row">
+<button class="btn" onclick="closeModal()">Cancel</button>
+<button class="btn btn-primary" onclick="saveNickname('${id}')">Save</button>
+</div>
+</div></div>`;
+setTimeout(()=>{const el=$('edit-nickname-input');if(el)el.focus()},100);
+}
+function saveNickname(id){
+const po=allPOs.find(p=>p.id===id);if(!po)return;
+const el=$('edit-nickname-input');
+po.nickname=el?el.value.trim():'';
+closeModal();savePO(id);saveIndex();renderPO(id);
+}
+function deleteDesign(poId,pi){
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+const prod=po.products[pi];
+const name=prod?prod.code:'this design';
+$('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<h3>Delete design?</h3>
+<p style="font-size:13px;color:var(--text2)">Remove <b>${name}</b> from ${po.poNumber}? This will delete all tracking data for this design.</p>
+<div class="btn-row">
+<button class="btn" onclick="closeModal()">Cancel</button>
+<button class="btn" style="background:var(--red);color:#fff;border-color:var(--red)" onclick="confirmDeleteDesign('${poId}',${pi})">Delete design</button>
+</div>
+</div></div>`;
+}
+function confirmDeleteDesign(poId,pi){
+closeModal();
+const po=allPOs.find(p=>p.id===poId);if(!po)return;
+po.products.splice(pi,1);
+po.products.forEach((p,i)=>{p.sno=i+1});
+po.totalBoxes=po.products.reduce((a,p)=>a+(p.totalBox||0),0);
+po.totalContainers=po.products.reduce((a,p)=>a+(p.containers||0),0);
+savePO(poId);renderPO(poId);
+}
+
+function showSettings(){
+$('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<h3>Settings</h3>
+<p style="font-size:13px;color:var(--text2);margin-bottom:16px">Connected to Supabase</p>
+<p style="font-size:11px;color:var(--text3);word-break:break-all;margin-bottom:16px">${SUPABASE_URL||'Not connected'}</p>
+<div class="btn-row">
+<button class="btn" onclick="closeModal()">Close</button>
+<button class="btn" style="color:var(--red);border-color:var(--red)" onclick="disconnectDB()">Disconnect</button>
+</div>
+</div></div>`;
+}
+function disconnectDB(){
+localStorage.removeItem('vz-sb-url');
+localStorage.removeItem('vz-sb-key');
+SUPABASE_URL='';SUPABASE_KEY='';db=null;allPOs=[];
+closeModal();showConfig();
+}
+async function init(){
+SUPABASE_URL=localStorage.getItem('vz-sb-url')||'';
+SUPABASE_KEY=localStorage.getItem('vz-sb-key')||'';
+if(SUPABASE_URL&&SUPABASE_KEY){
+initSupabase();
+await loadData();
+go('dashboard');
+}else{
+showConfig();
+}
+}
+init();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
