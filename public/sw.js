@@ -1,4 +1,4 @@
-const CACHE='vz-tracker-v1';
+const CACHE='vz-tracker-v2';
 const ASSETS=['/','/index.html','/manifest.json','/icon-192.png','/icon-512.png'];
 const CDN=[
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap',

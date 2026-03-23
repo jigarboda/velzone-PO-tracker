@@ -33,3 +33,9 @@ ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
 -- Allow all operations with anon key (for single-user use)
 CREATE POLICY "Allow all" ON purchase_orders
   FOR ALL USING (true) WITH CHECK (true);
+
+-- Enable Realtime for this table
+ALTER PUBLICATION supabase_realtime ADD TABLE purchase_orders;
+
+-- Needed for realtime DELETE events to include the row id
+ALTER TABLE purchase_orders REPLICA IDENTITY FULL;
